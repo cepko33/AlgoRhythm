@@ -4,6 +4,26 @@ import os
 import random
 import logging
 
+# In order to perform fft, the size of the array must be even
+def ensureEven(audio):
+    if len(audio) % 2 != 0:
+        audio = audio[:-1]
+    return audio
+
+# To divide the audio into attack and decay segments, split along the
+# global maximum amplitude.
+def extractEnvelopeSegments(audio):
+    pd = PeakDetection(orderBy='amplitude')
+    duration = Duration()
+    midpoint, _ = pd(audio)
+
+    slicer = Slicer(startTimes=essentia.array([0, midpoint[0]]),
+                    endTimes=essentia.array([midpoint[0], duration(audio)]))
+    slices = slicer(audio)
+
+    # XXX: ugly
+    return ensureEven(slices[0]), ensureEven(slices[1])
+
 def sampleGenerator(basedir='drums/', size=1000, seed=666):
     samples = []
     random.seed(seed)
