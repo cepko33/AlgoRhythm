@@ -43,10 +43,9 @@ spectralCentroid = cm(spectrum(decay))
 ds = DistributionShape()
 _, skewness, kurtosis = ds(spectralCentroid)
 
-print skewness
-print kurtosis
+# print skewness
+# print kurtosis
 
-"""
 for frame in FrameGenerator(audio, frameSize = 1024, hopSize = 512):
     zero_cross = zcr(spectrum(w(frame)))
     centroid = tctt(spectrum(w(frame)))
@@ -68,4 +67,3 @@ show()
 
 output = YamlOutput(filename = 'data.sig')
 output(pool)
-"""
