@@ -1,15 +1,14 @@
 from IPython.terminal.embed import InteractiveShellEmbed
 import essentia
-import essentia.streaming
-
 from essentia.standard import *
+import numpy as np
+from pylab import *
+import utils
 
 ipshell = InteractiveShellEmbed()
 
 loader = essentia.standard.MonoLoader(filename = 'tom.wav')
 audio = loader()
-
-from pylab import *
 
 w = Windowing(type = 'hann')
 spectrum = Spectrum()
@@ -20,17 +19,34 @@ tctt = TCToTotal()
 fft = FFT()
 
 
-# Data we need to compile:
-# ZCR +
-# Kurtosis +
-# Skewness +
-# Centroid +
-# Fourier +
-# MFCC +
-
+# Data we need to compile
+# -----------------------
+# ZCR                       - Scalar - Attack + Decay segments
+# Kurtosis                  - Scalar - Decay segment
+# Skewness                  - Scalar - Decay segment
+# Centroid                  - Vector - Decay segment            - 5 orders
+# Energy Descriptors (FFT)  - Vector - Attack + Decay segments  - m bands
+# MFCC                      - Vector - Attack + Decay segments  - n bands
+# ----------------------------------------------------------------
+# So we have 4 scalar features and 5 + m + n vector features
 
 pool = essentia.Pool()
+attack, decay = utils.extractEnvelopeSegments(audio)
 
+# Spectral centroid
+# range = sampleRate / 2
+# see http://essentia.upf.edu/documentation/reference/std_CentralMoments.html
+cm = CentralMoments(range=22050)
+spectralCentroid = cm(spectrum(decay))
+
+# Extracting kurtosis & skewness
+ds = DistributionShape()
+_, skewness, kurtosis = ds(spectralCentroid)
+
+print skewness
+print kurtosis
+
+"""
 for frame in FrameGenerator(audio, frameSize = 1024, hopSize = 512):
     zero_cross = zcr(spectrum(w(frame)))
     centroid = tctt(spectrum(w(frame)))
@@ -52,3 +68,4 @@ show()
 
 output = YamlOutput(filename = 'data.sig')
 output(pool)
+"""
