@@ -1,7 +1,6 @@
 from IPython.terminal.embed import InteractiveShellEmbed
 import essentia
 from essentia.standard import *
-import numpy as np
 from pylab import *
 import utils
 
