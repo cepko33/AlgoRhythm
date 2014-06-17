@@ -35,8 +35,8 @@ def sampleGenerator(basedir='drums/'):
     # of a generator but w/e
     for dirpath, _, paths in os.walk(basedir):
         samples.extend([dirpath + '/' + path for path in paths])
-
-    while len(samples) > 0:       
+    i = 0
+    while len(samples) > 0 and i < 300:       
         try:
             samplePath = samples.pop()
             loader.configure(filename=samplePath)
@@ -46,4 +46,5 @@ def sampleGenerator(basedir='drums/'):
             logging.warning("Skipping bad file: " + samplePath)
             continue
 
-        yield sample
+        yield sample, samplePath
+        i += 1

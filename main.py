@@ -4,8 +4,13 @@ from essentia.standard import *
 from pylab import *
 import utils
 import sys
+import os.path
 from sklearn import neighbors
+from sklearn.decomposition import PCA
 import numpy as np
+import pickle
+
+pca = PCA(n_components=2)
 
 try:
     import config
@@ -13,11 +18,25 @@ except ImportError:
     print "Please make a config.py file, see config.py.example"
     sys.exit(1)
 
+def poolToPickle(pool):
+    result = []
+    for key in pool.descriptorNames():
+        result.append((key, pool[key]))
+    return result
+
 def poolToNumpy(pool):
     result = []
     for key in pool.descriptorNames():
         result.append(pool[key])
-    return np.array(result).flatten()
+    pca.fit(np.reshape(np.array(result).flatten(), (-1, 2)))
+    return pca.explained_variance_ratio_
+
+def pickleToPool(nparr):
+    pool = essentia.Pool()
+    for tup in nparr:
+        pool.add(tup[0], tup[1])
+    return pool
+    
 # Data we need to compile
 # -----------------------
 # ZCR                       - Scalar - Attack + Decay segments
@@ -33,7 +52,10 @@ def computeFeatures(pool, sample):
     attack, decay = utils.extractEnvelopeSegments(sample)
     decay_spectrum = spectrum(decay)
     # ZCR
-    pool.add('zcr.attack', zcr(attack))
+    if len(attack) > 0:
+        pool.add('zcr.attack', zcr(attack))
+    else:
+        pool.add('zcr.attack', 0)
     pool.add('zcr.decay', zcr(decay))
     # Centroid XXX: scalarize
     spectralCentroid = cm(decay_spectrum)
@@ -78,25 +100,33 @@ energy_10k_15k = EnergyBand(startCutoffFrequency=10000, stopCutoffFrequency=1500
 # Training phase
 training_pools = {}
 for classifier in config.CLASSIFIERS:
+    if os.path.isfile(classifier[:-1] + '.sig'):
+        fd = open(classifier[:-1] + '.sig', 'r+')
+        training_pools[classifier] = pickleToPool(pickle.load(fd))
+        fd.close()
+        continue
     pool = essentia.Pool()
-    for sample in utils.sampleGenerator(basedir=config.TRAINING_DIR + classifier):
+    for sample, _ in utils.sampleGenerator(basedir=config.TRAINING_DIR + classifier):
         computeFeatures(pool, sample)
     training_pools[classifier] = PoolAggregator(defaultStats=['mean'])(pool)
-    
+    fd = open(classifier[:-1] + '.sig', 'w+')
+    pickle.dump(poolToPickle(training_pools[classifier]), fd)
+    fd.close()
 
 # Test phase
 results = []
-for sample in utils.sampleGenerator(basedir=config.SAMPLES_DIR):
+for sample, samplePath in utils.sampleGenerator(basedir=config.SAMPLES_DIR):
     pool = essentia.Pool()
     computeFeatures(pool, sample)
-    clf = neighbors.KNeighborsClassifier(15)
+    clf = neighbors.KNeighborsClassifier(weights='distance')
     training = []
     labels = []
     for key in training_pools.keys():
         labels.append(key)
         training.append(poolToNumpy(training_pools[key]))
+        print poolToNumpy(training_pools[key])
     clf.fit(training, labels)
     test = poolToNumpy(pool)
-    results.append(clf.predict(test))
+    results.append((clf.predict(test), samplePath))
 
 print results
