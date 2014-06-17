@@ -16,17 +16,15 @@ def extractEnvelopeSegments(audio):
     pd = PeakDetection(orderBy='amplitude')
     duration = Duration()
     midpoint, _ = pd(audio)
-
-    slicer = Slicer(startTimes=essentia.array([0, midpoint[0]]),
-                    endTimes=essentia.array([midpoint[0], duration(audio)]))
+    slicer = Slicer(startTimes=essentia.array([0, midpoint[0]*duration(audio)]),
+                    endTimes=essentia.array([midpoint[0]*duration(audio), duration(audio)]))
     slices = slicer(audio)
 
     # XXX: ugly
     return ensureEven(slices[0]), ensureEven(slices[1])
 
-def sampleGenerator(basedir='drums/', size=1000, seed=666):
+def sampleGenerator(basedir='drums/'):
     samples = []
-    random.seed(seed)
     
     # There is a crazy memleak if you try to create
     # new loader objects in a loop:
@@ -38,11 +36,9 @@ def sampleGenerator(basedir='drums/', size=1000, seed=666):
     for dirpath, _, paths in os.walk(basedir):
         samples.extend([dirpath + '/' + path for path in paths])
 
-    i = 0
-
-    while i < size:
+    while len(samples) > 0:       
         try:
-            samplePath = random.choice(samples)
+            samplePath = samples.pop()
             loader.configure(filename=samplePath)
             sample = loader()
         # Skip if not an audio file
@@ -51,4 +47,3 @@ def sampleGenerator(basedir='drums/', size=1000, seed=666):
             continue
 
         yield sample
-        i += 1

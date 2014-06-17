@@ -1,0 +1,11 @@
+# Directory where samples to test are stored
+SAMPLES_DIR='samples/'
+
+# Directory where training samples are stored
+TRAINING_DIR='training/'
+
+# Directory where test results will be written
+RESULTS_DIR='test/'
+
+# Classification bins, subdirectories of training and results dirs
+CLASSIFIERS=['beated/', 'membrane/']
